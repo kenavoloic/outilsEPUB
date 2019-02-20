@@ -1,0 +1,673 @@
+#+STARTUP: fold
+* Bash
+Zippe tous les dossiers et copie le fichier /.zip/ dans dossier /../neleS/
+#+BEGIN_SRC shell
+for i in * ;
+do zip -r ../neleS/$i.zip $i;
+done
+#+END_SRC
+
+Creation de 5 dossiers: /v1 v2 v3 v4 v5/
+#+BEGIN_SRC python
+import os
+for x in range(5):
+    os.makedirs("v"+str(1+x))
+#+END_SRC
+
+Supprime les 15 premières lignes de tous les fichiers /xhtml/ et les renomme /xhtml.txt/
+#+BEGIN_SRC shell
+sed -i.txt -n '15,$p' *.xhtml
+#+END_SRC
+
+
+Découpe le fichier raw.xhtml 
+#+BEGIN_SRC shell
+csplit -f OEBPS/textes/bk01 -b "%2.3d.xhtml" raw.xhtml "/<h1/" "{*}"
+#+END_SRC
+
+
+Extracteur sur 5 chiffres
+#+BEGIN_SRC shell
+
+csplit -f OEBPS/textes/bk01 -b "%2.3d.xhtml" raw.xhtml "/<h1/" "{*}"
+
+csplit -f "t3/bk" -b "%2.3d.xhtml" raw.xhtml "/<h1/" "{*}"
+#+END_SRC
+
+Remove bom : latex file
+#+BEGIN_SRC shell
+tail --bytes=+4 UTF8WithBom.txt > UTF8WithoutBom.txt
+#+END_SRC
+
+* Emacs fonctions
+Unwrap text in Emacs
+#+BEGIN_SRC 
+C-u 9 9 9 9 C-x f
+C-x h
+M-x fill-region
+#+END_SRC
+
+ajoute une ligne blanche après le curseur
+
+C-o  (= open-line)
+
+C-x C-o  (= delete-blank-lines)
+supprime toutes les lignes blanches sauf une autour du curseur
+
+
+M-0 F4
+réitère la dernière macro sur chaque ligne jusqu'à la fin du buffer.
+
+
+C-x r x numero : sauve dans le registre numero
+C-x r g numero : rappelle le contenu du registre numero
+
+
+C-x r m : marque-page
+C-x r b : aller au marque-page 
+C-x r l : liste des marque-pages
+M-x bookmark-delete 
+
+* Emacs lisp
+#+BEGIN_SRC emacs-lisp
+
+(defun blab(debut fin)
+  (interactive "r")
+  (save-excursion
+    (let ((nombre (string-to-number (delete-and-extract-region debut fin))))
+    (insert 
+     (format "<span class=\"nda\" id=\"n%02d\"></span><a href=\"bk001.xhtml#cf%02d\">(%d)</a>" nombre nombre nombre)))
+))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(defun blob(debut fin)
+  (interactive "r")
+  (save-excursion
+    (let ((nombre (string-to-number (delete-and-extract-region debut fin))))
+    (insert 
+     (format "<span class=\"nda\" id=\"cf%02d\"></span><a href=\"bk001.xhtml#n%02d\">(%d)</a>" nombre nombre nombre)))
+))
+#+END_SRC
+* Expressions régulières
+** oneliner / snippets
+*** Met en majuscule la première lettre de chaque mot en début de ligne
+#+BEGIN_SRC emacs-lisp
+^\(\w+\)
+\,(capitalize \1)
+#+END_SRC
+
+*** Recherche des nombres
+#+BEGIN_SRC 
+(re-search-forward "[0-9]+")
+(re-search-forward "\([0-9]+\)")
+#+END_SRC
+
+*** Recherche des nombres entourés des balises <cfa> et </cfa>
+#+BEGIN_SRC emacs-lisp
+(re-search-forward "<cfa>\([0-9]+\)</cfa>")
+#+END_SRC
+
+*** Boucle insérant dix  #nda_00
+#+BEGIN_SRC emacs-lisp
+(dotimes (x 15) (insert (format "#nda_00_\n")))
+#+END_SRC
+
+*** Introduire une espace entre du texte de un point d'interrogation, utilisation du signe d'échappement /\?/
+Il faut ajouter une espace insécable, au besoin la copier-coller dans l'expression
+Exemple 
+Qui? => Qui ?
+
+#+BEGIN_SRC emacs-lisp
+\([a-zA-Z]+\)\(\?\)
+\1 \2
+#+END_SRC
+
+*** Pour unicode
+#+BEGIN_SRC 
+ \([:nonascii:]+\)\(\?\)
+\1 \2
+#+END_SRC
+
+*** Id pour un point d'exclamation, pas besoin du signe d'échappement pour un ! marche pour : ;
+bonjour, => 
+
+#+BEGIN_SRC emacs-lisp
+\([a-zA-Z]+\)\(!\)
+\1 \2
+#+END_SRC
+
+*** Ajoute un espace après une virgule
+le chien,la vache => le chien, la vache
+\([a-zA-Z]+\)\(,\)\([a-zA-Z]+\) -> \1\2 \3
+
+*** Pour unicode par exemple avec point d'interrogation
+ \([:nonascii:]+\)\(\?\)
+\1 \2
+
+
+<\(/?\)p> RET <\1em> RET
+
+met en valeur les seules parenthèses
+[\(\)]
+
+sélectionne tout ce qui est entre parenthèses
+([^)]+)
+
+
+sélectionne tout ce qui est entre crochet
+<[^>]+>
+
+sélectionne tous les Article [0-9]+. puis les transforme en <span class="gras">\1 \2</span>
+\(Article\) \([0-9]+.\) <span class="gras">\1 \2</span>
+
+Incrémente de trois tous les nombres entre guillemets: utile pour toc.ncx
+query-replace-regexp
+"[0-9]+" 
+"\,(+ 3 \#)"
+
+
+query-replace-regexp
+\('\)\([a-zA-Z ,.;:!?]+\)\('\)
+‘\2’
+
+Transforme les guillemets droits en guillemets anglaises 
+\("\)\([a-zA-Z0-9]+\)
+‘\2
+
+remplace tous les mots finissant en 'zaem' par <em>le_mot_en_zaem</em>
+\(\w+zaem\>\)
+<em>\1</em>
+
+remplace le premier mot de chaque ligne par <em>_le_premier_mot_de_chaque_phrase</em>
+^\(W*\w+\)
+<em>\1</em>
+
+met en majuscule le premier mot de chaque ligne
+^\(W*\w+\)
+\,(upcase \1))
+
+met en majuscule la première lettre du premier mot de chaque ligne
+^\(W*\w+\)
+\,(capitalize \1))
+
+transforme les ^([0-9]+) au début d'une ligne en <nda>\1</nda>
+^\(([0-9]+)\)
+<nda>\1</nda>
+
+;lignes commençant par une espace
+^\s-+
+;lignes finissant par une espace
+\s-+$
+** Fonctions
+(defun cfak(debut fin)
+       "dans une région sélectionnée, renumérote tous les <cfa>([0-9]+)</cfa>"
+       (interactive "r")
+       (save-excursion
+       (let ((compteur 0))
+       (goto-char debut)
+       (while (re-search-forward "<cfa>\([0-9]+\)</cfa>" fin t)
+     	    (replace-match (format "<cfa>\(%s\)</cfa>" (setq compteur (1+ compteur))))))))
+
+(defun ndak(debut fin)
+       "dans une région sélectionnée, renumérote tous les <nda>([0-9]+)</nda>"
+       (interactive "r")
+       (save-excursion
+       (let ((compteur 0))
+       (goto-char debut)
+       (while (re-search-forward "<nda>\([0-9]+\)</nda>" fin t)
+     	    (replace-match (format "<nda>\(%s\)</nda>" (setq compteur (1+ compteur))))))))
+
+(defun bilbo()
+       "agit sur tout le buffer"
+       (interactive)
+       (save-excursion
+       (let ((compteur 0))
+       (while (re-search-forward "#cfa_01_" nil t)
+       (replace-match (format "#cfa_01_%02d" (setq compteur (1+ compteur))))))))
+
+
+(defun balibalo()
+     (interactive)
+     (let ((compteur 0))
+     (while (re-search-forward "<cfa>\([0-9]+\)</cfa>" nil t)
+     	    (replace-match (format "<cfa>\(%s\)</cfa>" (setq compteur (1+ compteur)))))))
+
+(defun balibalo(debut fin)
+       (interactive "r")
+       (save-excursion
+       (narrow-to-region debut fin)
+       (goto-char point-min))
+       (let ((compteur 0))
+       (while (re-search-forward "<cfa>\([0-9]+\)</cfa>" nil t)
+     	    (replace-match (format "<cfa>\(%s\)</cfa>" (setq compteur (1+ compteur)))))))
+
+
+(defun balibalo(debut fin)
+       (interactive "r")
+       (save-excursion
+       (let ((compteur 0))
+       (goto-char debut)
+       (while (re-search-forward "<cfa>\([0-9]+\)</cfa>" fin t)
+     	    (replace-match (format "<cfa>\(%s\)</cfa>" (setq compteur (1+ compteur))))))))
+
+
+(defun cfak(debut fin)
+       "dans une région sélectionnée, renumérote tous les <cfa>([0-9]+)</cfa>"
+       (interactive "r")
+       (save-excursion
+       (let ((compteur 0))
+       (goto-char debut)
+       (while (re-search-forward "<cfa>\([0-9]+\)</cfa>" fin t)
+     	    (replace-match (format "<cfa>\(%s\)</cfa>" (setq compteur (1+ compteur))))))))
+
+(defun ndak(debut fin)
+       "dans une région sélectionnée, renumérote tous les <nda>([0-9]+)</nda>"
+       (interactive "r")
+       (save-excursion
+       (let ((compteur 0))
+       (goto-char debut)
+       (while (re-search-forward "<nda>\([0-9]+\)</nda>" fin t)
+     	    (replace-match (format "<nda>\(%s\)</nda>" (setq compteur (1+ compteur))))))))
+
+(defun bilbo()
+       (interactive)
+       (save-excursion
+       (let ((compteur 0))
+       (while (re-search-forward "#nda_00_" nil t)
+       (replace-match (format "#nda_00_%02d" (setq compteur (1+ compteur))))))))
+* Unicode
+
+Æ c6
+ae e6
+Œ  152
+oe 153
+« ab
+» bb
+ñ f1
+~ 7e
+
+˜ 2dc
+∼ 223c
+〜 301c
+～ ff5e
+⁓ 2053
+
+– 2013
+— 2014
+― 2015
+
+% 25
+
+* Grep/Find
+#+BEGIN_SRC shell
+find . -type f -print0 | "xargs" -0 -e grep -nH -e ^"Livre\|Titre\|Chapitre\|Section\|Sous-section"
+#+END_SRC
+* Images
+Taille de l'image
+#+BEGIN_SRC shell
+identify image.jpg
+#+END_SRC
+
+Réduire l'image de 50 %
+#+BEGIN_SRC shell
+convert -resize 50% image.jpg nouvelle_image.jpg
+#+END_SRC
+* Epub/Mobi
+Création fichier epub en 2 temps puis vérification
+#+BEGIN_SRC shell
+zip -0Xq fichier.epub mimetype 
+zip -XrDq9 fichier.epub META-INF/ OEBPS/
+java -jar ../../epubcheck/epubcheck-3.0b3.jar fichier.epub
+#+END_SRC
+
+Création epub : alternative
+#+BEGIN_SRC shell
+zip -X fichier.epub mimetype
+zip -rg fichier.epub META-INF
+zip -rg fichier.epub OEBPS
+#+END_SRC
+* ConTeXt
+https://tex.stackexchange.com/questions/77831/indenting-footnotes-in-context
+
+
+
+
+https://en.wikibooks.org/wiki/LaTeX/Command_Glossary
+
+-------------------------------------------------------
+#+BEGIN_SRC latex
+\definepapersize[kindle][width=90mm,height=117mm]
+    \setuppapersize[kindle][kindle]
+    \setuplayout[
+       backspace=2mm,
+       topspace=2mm,
+       header=0mm,
+       footer=0mm,
+       width=86mm,
+       height=113mm,
+    ]
+#+END_SRC
+--------------------------------------------------------
+
+text script scriptscript  x xx a b c d big small
+1.0 0.7 0.5 0.8 0.6 1.2 1.440 1.728 2.074 1.2 0.8
+
+\definebodyfontenvironment[12pt][text=1, script=, scriptscript=, x=, xx=, a=, b=, c=, d=, big=, small=, interlinespace=2.8ex]
+
+text : taille du texte en mode mathématique par défaut 1.0
+
+script : taille des scripts en mode mathématique par défaut 0.7
+
+scriptscript : taille des scriptscript en mode mathématique par défaut 0.5
+
+x : taille utilisée dans les commandes du type \tfx par défaut 0.8
+
+xx : taille utilisée dans les commandes du type \tfxx par défaut 0.6
+
+a : taille utilisée dans les commandes du type \tfa par défaut 1.200
+
+b : taille utilisée dans les commandes du type \tfb par défaut 1.440
+
+c : taille utilisée dans les commandes du type \tfc par défaut 1.728
+
+d : taille utilisée dans les commandes du type \tfd par défaut 2.074
+
+big : taille utilisée dans les commandes plus gros par défaut 1.2
+
+small : taille utilisée dans les commandes plus petit par défaut 0.8
+
+interlinespace : distance entre deux lignes d'un paragraphe par défaut 2.8ex
+
+em : style employé pour l'emphase (\em) par défaut slanted (penchée) 
+
+
+---------------------------------------------------------------
+
+
+>> Yes but context adds before the colon only a small space and not a word space.
+> 
+> How could one modify that?
+
+\setupcharacterspacing [frenchpunctuation] ["003A] [left=1] % default: left=.25
+
+----------------------
+
+\setupbackgrounds[header][text][frame=off, bottomframe=on,rulethickness=.5pt]
+\setupbackgrounds[footer][text][frame=off, bottomframe=on,rulethickness=.5pt]
+
+
+
+-------------------------------------------------
+
+pour éviter des veuves ou des orphelines : \testpage[n] ; n=nombre de lignes au minimum
+
+
+before={\testpage[1]}
+
+
+----------------
+
+
+\setupfootertexts[Page \currentpage\ of \lastpage]
+
+--------------------------------------
+
+\midaligned{\hbox to 2em{\dotfill}}
+\midaligned{\hbox to 1em{\dotfill}}
+\midaligned{\hbox to 2em{\dotfill}}
+
+-------------------------------------------------
+
+M\offset[y=-1.15ex]{mme}
+
+---------------------------------------------------
+
+http://wiki.contextgarden.net/Footnotes
+http://wiki.contextgarden.net/Chemistry
+
+
+--------------------------------------------------------
+
+https://tex.stackexchange.com/questions/77831/indenting-footnotes-in-context
+
+
+Use the \setupnotation [footnote] command to adjust the layout, here are some examples.
+
+%% left align the footnote number and shift the footnotes
+\setupnotation
+  [footnote]
+  [alternative=left]
+
+%% indents the entire footnote by 2em and the number by 1em
+\setupnotation
+  [footnote]
+  [alternative=left,
+   width=2em,
+   numbercommand=\hskip1em]
+
+%% left align the footnote number, which practically indents the
+%% first line
+\setupnotation
+  [footnote]
+  [alternative=left,
+   hang=1]
+
+%% Indents the first line inclusive the footnote number
+\setupnotation
+  [footnote]
+  [alternative=left,
+   numbercommand=\hskip1cm]
+
+%% Indents all footnotes and right-aligns the number
+\setupnotation
+  [footnote]
+  [alternative=left,
+   headalign=flushright,
+   width=2em]
+
+
+Full example:
+
+\setupnotation
+  [footnote]
+  [alternative=left,
+   hang=1,
+   numbercommand=\hskip1cm]
+
+\starttext
+
+Lorem \startfootnote
+        \input ward
+      \stopfootnote
+
+Ipsum \startfootnote
+        \input ward
+      \stopfootnote
+
+\stoptext
+
+
+-------------------------------------------------------------------
+
+\defineconversion
+    [words]
+    [One, Two, Three, Four, Five]
+
+  \definecounter [mycount]
+  \setupcounter  [mycount] [numberconversion=words]
+
+\setuphead
+   [chapter]
+   [header=high,
+    command=\MyChapterTitle,
+    style=\bfc,
+    conversion=Words,
+    numberstyle=\bfb]
+
+  \starttext
+    \dorecurse{5}{%%
+      \incrementcounter [mycount]
+      \convertedcounter [mycount]}
+  \stoptext
+
+\documentclass[12pt]{book}
+\usepackage[paperwidth=9cm, paperheight=12cm, top=0.5cm, bottom=0.5cm, left=0.0cm, right=0.5cm]{geometry}
+\special{papersize=9cm,12cm}
+
+
+------------------------------
+
+
+ConTeXt
+
+https://randomdeterminism.wordpress.com/2009/10/21/creating-a-style-file-in-context/
+
+
+https://tex.stackexchange.com/questions/29840/consistent-typography
+
+https://chenfuture.wordpress.com/2009/02/07/dos-and-donts-when-typesetting-a-document/
+
+http://people.umass.edu/klement/russell-imp.html
+
+* Formats livre
+Les formats à la française
+
+On entend par format à la française un livre orienté en portrait (format plus haut que large).
+
+• Format livre de Poche, dimension : 11 x 18 cm
+• Format digest, dimension : 14 x 21,6 cm
+• Format roman A5, dimension : 14,8 x 21 cm
+• Format A4, dimension : 21 x 29,7 cm
+
+Les formats carrés
+
+• Format carré -, dimension : 15 x 15 cm
+• Format carré, dimension : 21 x 21 cm
+
+Les formats à l'italienne
+
+On entend par format à l'italienne un livre orienté en paysage (format plus large que haut).
+
+• Format roman A5, dimension :14,8x 21 cm
+• Format livre de Poche, dimension : 11 x 18 cm
+• Format digest, dimension : 14 x 21,6 cm
+* Typographie : signes doubles
+; &thinsp;;
+« «&thinsp;
+»  &thinsp;»
+: &nbsp;:
+! &thinsp;!
+? &thinsp;?
+* Misc
+(lunar-phases)
+donne les phases de la lune sur trois mois.
+
+* Query replace
+\("\)\(\w+\)\("\) <em>\2</em>
+\("\)\(\w+ \w+\)\("\) <em>\2</em>
+\("\)\(\w+ \w+ \w+\)\("\) <em>\2</em>
+* Trucs org-mode
+Pour installer manuellement un paquet lisp.
+#+BEGIN_SRC 
+M-x package-install-file
+#+END_SRC
+
+[[http://pragmaticemacs.com/][Pragmatic Emacs]]
+* Trucs css
+#+BEGIN_SRC css
+a[title]:hover:after{
+    content:attr(title);
+    font-size:80%;
+    color:#332607;
+   /* background-color:transparent;#332607;*/
+}
+
+
+#+END_SRC
+* Configuration
+** Pour changer l’image de fond du login
+ Copier l’image choisie dans /usr/share/images/desktop-base/
+ Modifier /etc/lightdm/lightdm-gtk-greeter.conf
+ #+BEGIN_SRC 
+background=/usr/share/images/desktop-base/nouvelle_image.jpg 
+ #+END_SRC
+  
+* Emmet
+** douze boutons avec id=00 inclus dans un div
+   div>(button#b$$*12)
+** meta:vp
+   meta viewport ...
+* SQL/MariaDB
+** Taille dBase
+#+BEGIN_SRC sql
+select table_schema "Database name", sum(data_length + index_length)/1024/1024  "Database Size (MB)" from information_schema.TABLES where table_schema = 'mysql';
+#+END_SRC
+
+#+BEGIN_SRC sql
+select table_name "Table Name", table_rows "Rows Count", round(((data_length + index_length)/1024/1024),2) "Table Size (MB)" from information_schema.tables where table_schema = "tudor" and table_name = "wto";
+#+END_SRC
+** insertion dans dbase
+#+BEGIN_SRC shell
+mysql -u <utilisateur> -p -e 'source fichier.sql'
+mysql -u nomDbase < fichier.sql -p
+#+END_SRC
+** SELECT COUNT(*), AVG(montant), MIN(montant), MAX(montant), SUM(montant) FROM reserve2016 WHERE nom='abad';
+** select activite, count(*) as nombre from portraits group by activite order by nombre desc;
+** SELECT DISTINCT COUNT(nom) FROM reserve2013;
+** SELECT COUNT(nom) FROM reserve2013;
+** SELECT montant, SUM(montant) FROM reserve2016 WHERE nom='abad';
+** select distinct nom from reserve2016 limit 1,15;
+
+** Second plus haut montant
+   #+BEGIN_SRC sql
+   select max(montant) from reserve2013 where montant < (select max(montant) from reserve2013);
+   #+END_SRC 
+** function Capitalize
+#+BEGIN_SRC sql
+create function capitale (envoi char(255))
+returns char(255) deterministic
+return concat(ucase(substring(envoi, 1,1)), substring(envoi,2));
+#+END_SRC
+
+** Views:
+#+BEGIN_SRC sql
+create view jazzy as select * from portraits where genre = 'jazz' order by nationalite, nom;
+#+END_SRC
+
+#+BEGIN_SRC sql
+alter view jazzy as select capitale(nom) as Nom, capitale(prenom) as Prénom, capitale(genre) as Genre, capitale(activite) as Activité, ucase(nationalite) as Nationalité  from portraits where genre = 'jazz' order by nationalite, nom;
+#+END_SRC
+
+
+#+BEGIN_SRC sql
+alter view jazzy as select capitale(nom) as Nom, capitale(prenom) as Prénom, capitale(genre) as Genre, capitale(activite) as Activité, ucase(nationalite) as Nationalité  from portraits where genre = 'jazz' order by nom;
+#+END_SRC
+
+#+BEGIN_SRC sql
+alter view jazzy as select capitale(nom) as Nom, capitale(prenom) as Prénom,  capitale(activite) as Activité, ucase(nationalite) as Nationalité  from portraits where genre = 'jazz' order by nom;
+#+END_SRC
+
+#+BEGIN_SRC sql
+select * from reserve2013 where nom='abad' 
+union 
+select * from reserve2014 where nom='abad' 
+union 
+select * from reserve2015 where nom='abad' 
+limit 8;
+#+END_SRC
+
+#+BEGIN_SRC sql
+create view abad as 
+select nom, prenom, beneficiaire, adresse, montant, groupe from reserve2013 where nom ='abad' 
+union 
+select nom, prenom, beneficiaire, adresse, montant, groupe from reserve2014 where nom ='abad' 
+union 
+select nom, prenom, beneficiaire, adresse, montant, groupe from reserve2015 where nom ='abad' 
+union 
+select nom, prenom, beneficiaire, adresse, montant, groupe from reserve2016 where nom ='abad';
+#+END_SRC
+
+#+BEGIN_SRC sql
+SHOW FULL TABLES IN database_name WHERE TABLE_TYPE LIKE 'VIEW';
+#+END_SRC
